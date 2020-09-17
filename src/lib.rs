@@ -2,12 +2,10 @@
 //  - it's useful when you want to check your code with `cargo make verify`
 // but some rules are too "annoying" or are not applicable for your case.)
 #![allow(clippy::wildcard_imports)]
-#![feature(const_fn)]
 
+use seed::prelude::web_sys::Event;
 use seed::{prelude::*, *};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use serde_json::{Result, Value};
+mod bitsets;
 mod dota;
 
 use dota::*;
@@ -19,46 +17,72 @@ use seed::{prelude::*, *};
 
 // `init` describes what should happen when your app started.
 fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
-    Model::new()
+    let mut model = Model::new();
+    model.game.init_hero();
+    model
 }
 
 // `Model` describes our app state.
-#[derive(Default)]
 struct Model {
-    data: Data,
+    game: Game,
 }
 
 impl Model {
     fn new() -> Self {
-        Model {
-            data: serde_json::from_str(include_str!("dota.json")).unwrap(),
-        }
+        Model { game: Game::new() }
     }
 }
 
 // `Msg` describes the different events you can modify state with.
 enum Msg {
-    Increment,
+    ToggleHero(usize),
 }
 
 // `update` describes how to handle each `Msg`.
 fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Increment => {}
+        Msg::ToggleHero(i) => {
+            model.game.toggle_hero(i);
+        }
     }
 }
 
 // `view` describes what to display.
 fn view(model: &Model) -> Node<Msg> {
-    div![ul![
-        if let Table::Alliances { rows } = &model.data.objects[0] {
-            rows.to_vec()
-        } else {
-            vec![]
-        }
-        .iter()
-        .map(|alliance| li![format!("{}", alliance.id)]),
-    ],]
+    div![div![ol![model.game.heroes.iter().enumerate().map(
+        |(i, hero)| li![
+            div![
+                C![
+                    "heroes",
+                    if model.game.hero_filtered(i) {
+                        ""
+                    } else {
+                        "removed"
+                    }
+                ],
+                div![
+                    C!["grid grid-cols-2"],
+                    div![
+                        C![if model.game.hero_locked(i) {
+                            "checked"
+                        } else {
+                            ""
+                        },],
+                        &hero.name
+                    ],
+                    div![
+                        C!["alliances grid grid-cols-3"],
+                        model
+                            .game
+                            .hero_alliances(i)
+                            .iter()
+                            .map(|alliance| div![&alliance.name])
+                    ],
+                ]
+            ],
+            ev(Ev::Click, move |_| Msg::ToggleHero(i))
+        ]
+    )]],]
 }
 
 #[wasm_bindgen(start)]

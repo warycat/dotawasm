@@ -1,3 +1,4 @@
+use super::bitsets::all_bitsets;
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 
@@ -19,7 +20,7 @@ pub enum Table {
     Tiers { rows: Vec<Tier> },
 }
 
-#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[serde(tag = "type")]
 pub struct Alliance {
     pub id: String,
@@ -28,23 +29,118 @@ pub struct Alliance {
     pub max: i32,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[serde(tag = "type")]
 pub struct Attribute {
     pub hero_id: String,
     pub alliance_id: String,
 }
 
-#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[serde(tag = "type")]
 pub struct Hero {
     pub id: String,
     pub name: String,
 }
-
-#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 #[serde(tag = "type")]
 pub struct Tier {
     pub hero_id: String,
     pub tier: i32,
+}
+
+pub struct Game {
+    pub heroes: Vec<Hero>,
+    pub alliances: Vec<Alliance>,
+    pub tiers: Vec<Tier>,
+    pub attributes: Vec<Attribute>,
+    pub bitsets: Vec<(u32, u64)>,
+    pub lock_hero_bitset: u64,
+    pub query_hero_bitset: u64,
+}
+
+impl Game {
+    pub fn new() -> Self {
+        let data: Data = serde_json::from_str(include_str!("dota.json")).unwrap();
+        let mut heroes = vec![];
+        let mut alliances = vec![];
+        let mut attributes = vec![];
+        let mut tiers = vec![];
+        let bitsets = all_bitsets();
+        let lock_hero_bitset = 0;
+        let query_hero_bitset = !0;
+        for table in data.objects {
+            match table {
+                Table::Alliances { mut rows } => {
+                    alliances.append(&mut rows);
+                    alliances.sort_unstable();
+                }
+                Table::Attributes { mut rows } => {
+                    attributes.append(&mut rows);
+                }
+                Table::Heroes { mut rows } => {
+                    heroes.append(&mut rows);
+                    heroes.sort_unstable();
+                }
+                Table::Tiers { mut rows } => {
+                    tiers.append(&mut rows);
+                    tiers.sort_unstable();
+                }
+            }
+        }
+        Game {
+            heroes,
+            alliances,
+            attributes,
+            tiers,
+            bitsets,
+            lock_hero_bitset,
+            query_hero_bitset,
+        }
+    }
+
+    pub fn init_hero(&mut self) {
+        self.query_hero_bitset = self.query();
+    }
+
+    pub fn toggle_hero(&mut self, i: usize) {
+        if self.hero_locked(i) {
+            self.lock_hero_bitset &= !(1 << i);
+        } else {
+            self.lock_hero_bitset |= 1 << i;
+        }
+
+        self.query_hero_bitset = self.query();
+    }
+
+    pub fn hero_locked(&self, i: usize) -> bool {
+        self.lock_hero_bitset & (1 << i) != 0
+    }
+
+    pub fn hero_filtered(&self, i: usize) -> bool {
+        self.query_hero_bitset & (1 << i) != 0
+    }
+
+    pub fn hero_alliances(&self, i: usize) -> Vec<Alliance> {
+        let mut res = vec![];
+        let hero = &self.heroes[i];
+        for attr in &self.attributes {
+            for alliance in &self.alliances {
+                if hero.id == attr.hero_id && attr.alliance_id == alliance.id {
+                    res.push(alliance.clone());
+                }
+            }
+        }
+        res
+    }
+
+    pub fn query(&self) -> u64 {
+        let mut hero_bitset = 0;
+        for (_, bitset) in &self.bitsets {
+            if bitset & self.lock_hero_bitset == self.lock_hero_bitset {
+                hero_bitset |= bitset;
+            }
+        }
+        hero_bitset
+    }
 }
