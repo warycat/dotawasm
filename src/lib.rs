@@ -49,40 +49,41 @@ fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
 
 // `view` describes what to display.
 fn view(model: &Model) -> Node<Msg> {
-    div![div![ol![model.game.heroes.iter().enumerate().map(
-        |(i, hero)| li![
+    div![div![ol![model.game.heroes_by_tier().into_iter().map(
+        |(tier, i, hero, alliances)| li![div![
+            C![
+                "heroes",
+                if model.game.hero_filtered(i) {
+                    ""
+                } else {
+                    "removed"
+                }
+            ],
             div![
-                C![
-                    "heroes",
-                    if model.game.hero_filtered(i) {
-                        ""
-                    } else {
-                        "removed"
-                    }
-                ],
+                C!["grid grid-cols-2"],
                 div![
-                    C!["grid grid-cols-2"],
-                    div![
-                        C![if model.game.hero_locked(i) {
+                    C![
+                        "col-span-2 sm:col-span-1",
+                        if model.game.hero_locked(i) {
                             "checked"
                         } else {
                             ""
-                        },],
-                        &hero.name
+                        }
                     ],
-                    div![
-                        C!["alliances grid grid-cols-3"],
-                        model
-                            .game
-                            .hero_alliances(i)
-                            .iter()
-                            .map(|alliance| div![&alliance.name])
-                    ],
+                    tier,
+                    " ",
+                    &hero.name,
+                    ev(Ev::Click, move |_| Msg::ToggleHero(i))
+                ],
+                div![
+                    C!["alliances col-span-2 sm:col-span-1 grid grid-cols-3"],
+                    alliances
+                        .iter()
+                        .map(|alliance| div![C!["flex justify-center"], &alliance.name])
                 ]
-            ],
-            ev(Ev::Click, move |_| Msg::ToggleHero(i))
-        ]
-    )]],]
+            ]
+        ]]
+    )]]]
 }
 
 #[wasm_bindgen(start)]

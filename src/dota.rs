@@ -1,6 +1,5 @@
 use super::bitsets::all_bitsets;
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
 
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Data {
@@ -121,16 +120,26 @@ impl Game {
         self.query_hero_bitset & (1 << i) != 0
     }
 
-    pub fn hero_alliances(&self, i: usize) -> Vec<Alliance> {
+    pub fn heroes_by_tier(&self) -> Vec<(i32, usize, Hero, Vec<Alliance>)> {
         let mut res = vec![];
-        let hero = &self.heroes[i];
-        for attr in &self.attributes {
-            for alliance in &self.alliances {
-                if hero.id == attr.hero_id && attr.alliance_id == alliance.id {
-                    res.push(alliance.clone());
+        let n = self.heroes.len();
+        for i in 0..n {
+            let hero = &self.heroes[i];
+            for tier in &self.tiers {
+                if hero.id == tier.hero_id {
+                    let mut alliances = vec![];
+                    for alliance in &self.alliances {
+                        for attr in &self.attributes {
+                            if hero.id == attr.hero_id && attr.alliance_id == alliance.id {
+                                alliances.push(alliance.clone());
+                            }
+                        }
+                    }
+                    res.push((tier.tier, i, hero.clone(), alliances));
                 }
             }
         }
+        res.sort_unstable();
         res
     }
 
