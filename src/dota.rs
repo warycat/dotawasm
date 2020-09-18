@@ -56,6 +56,7 @@ pub struct Game {
     pub bitsets: Vec<(u32, u64)>,
     pub lock_hero_bitset: u64,
     pub query_hero_bitset: u64,
+    pub query_count: usize,
 }
 
 impl Game {
@@ -68,6 +69,7 @@ impl Game {
         let bitsets = all_bitsets();
         let lock_hero_bitset = 0;
         let query_hero_bitset = !0;
+        let query_count = 0;
         for table in data.objects {
             match table {
                 Table::Alliances { mut rows } => {
@@ -95,11 +97,14 @@ impl Game {
             bitsets,
             lock_hero_bitset,
             query_hero_bitset,
+            query_count,
         }
     }
 
     pub fn init_hero(&mut self) {
-        self.query_hero_bitset = self.query();
+        let (query_hero_bitset, query_count) = self.query();
+        self.query_hero_bitset = query_hero_bitset;
+        self.query_count = query_count;
     }
 
     pub fn toggle_hero(&mut self, i: usize) {
@@ -108,8 +113,9 @@ impl Game {
         } else {
             self.lock_hero_bitset |= 1 << i;
         }
-
-        self.query_hero_bitset = self.query();
+        let (query_hero_bitset, query_count) = self.query();
+        self.query_hero_bitset = query_hero_bitset;
+        self.query_count = query_count;
     }
 
     pub fn hero_locked(&self, i: usize) -> bool {
@@ -143,13 +149,15 @@ impl Game {
         res
     }
 
-    pub fn query(&self) -> u64 {
+    pub fn query(&self) -> (u64, usize) {
         let mut hero_bitset = 0;
+        let mut count = 0;
         for (_, bitset) in &self.bitsets {
             if bitset & self.lock_hero_bitset == self.lock_hero_bitset {
                 hero_bitset |= bitset;
+                count += 1;
             }
         }
-        hero_bitset
+        (hero_bitset, count)
     }
 }

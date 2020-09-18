@@ -38,28 +38,28 @@ command = "wasm-pack"
 args = ["build", "--target", "web", "--out-name", "package"]
 
 [tasks.clean_docs]
-description = "Copy to docs folder"
 command = "rm"
-args = ["-rf", "docs/*"]
+args = ["-rf", "docs"]
+
+[tasks.mk_docs_dir]
+command = "mkdir"
+args = ["docs"]
 
 [tasks.copy_index]
-description = "Copy to docs folder"
 command = "cp"
-args = ["index.html", "docs/index.html"]
+args = ["index.html", "docs"]
 
 [tasks.copy_pkg]
-description = "Copy to docs folder"
 command = "cp"
-args = ["-r", "pkg", "docs/pkg"]
+args = ["-R", "pkg", "docs"]
 
 [tasks.rm_gitignore]
-description = "Copy to docs folder"
 command = "rm"
 args = ["docs/pkg/.gitignore"]
 
 [tasks.deploy]
 description = "Copy to docs folder"
-dependencies = ["clean_docs", "build_release", "copy_index", "copy_pkg", "rm_gitignore"]
+dependencies = ["clean_docs", "mk_docs_dir", "build_release", "copy_index", "copy_pkg", "rm_gitignore"]
 
 # ---- LINT ----
 
