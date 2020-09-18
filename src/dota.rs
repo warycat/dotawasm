@@ -146,6 +146,7 @@ impl Game {
             }
         }
         res.sort_unstable();
+        res.reverse();
         res
     }
 
